@@ -11,11 +11,27 @@ import copy
 from tkinter import ttk
 from bs4 import BeautifulSoup
 import requests
+from tkcalendar import DateEntry
 
 allPDF = {}
 assign_details = {}
-plag = []
-
+plag = {}
+avg_plag = {}
+plag_values_list = []
+calc_avg_plag = []
+sum_of_similarity= []
+plag_key = []
+a = {}
+b = 0
+sum_of_value = []
+create_assign = {}
+count_of_assignment = 0
+# global st_loggedin, te_loggedin
+st_loggedin = False
+te_loggedin = False
+path_list = []
+plagiarism = []
+comp_plag = {}
 
 ###############################  COLORS VARIABLE  ###############################
 bg_color = "#f2f2f3"
@@ -26,7 +42,6 @@ btn_hover_white = "#C6E6FB"
 btn_color = "#003151"
 success = "#3bb54a"
 error = "#ff3333"
-
 
 
 def open_signup_frame():
@@ -47,8 +62,37 @@ def close_login_frame():
 def open_main_frame():
     main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
 
+def open_student_home_frame():
+    student_home_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+    student_upload_frame.pack_forget()
+    close_dialog_box()
+
+def open_assignment_card_frame():
+    assignment_main_card_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+    student_home_frame.pack_forget()
+
+
+def close_assignment_main_card_frame():
+    if st_loggedin:
+        assignment_main_card_frame.pack_forget()
+        student_home_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+    elif te_loggedin:
+        assignment_main_card_frame.pack_forget()
+        assignment_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+
+def open_assignment_main_card_frame():
+    assignment_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+
+def open_assignment_frame():
+    assignment_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+    home_main_frame.pack_forget()
+
+def close_assignment_frame():
+    assignment_main_frame.pack_forget()
+    home_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+
 def close_detail_frame():
-    detail_frame.place_forget()
+    detail_main_frame.pack_forget()
     open_home_frame()
 
 def clear_signup_form():
@@ -69,6 +113,7 @@ def clear_details_form():
 ###############################  sIGNUP LOGIC  ###############################
 def signup_form(db_name):
     print("Entering into the database", db_name)
+    global name
     name = user_entry.get()
     password = pass_entry.get()
     confirm_password = c_pass_entry.get()
@@ -104,7 +149,7 @@ def validate_login(db_name):
     global name
     name = login_user_entry.get()
     password = login_pass_entry.get()
-    print(name)
+    print("User name is",name)
     print(password)
     try:
         # Execute a SELECT query to check if the username and password exist in the database
@@ -120,9 +165,15 @@ def validate_login(db_name):
             if db_name == "te_signup":
                 dialog_box("You are loggedin!", open_home_frame, success, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\check.png")
                 clear_login_form()
+                global te_loggedin, st_loggedin
+                te_loggedin = True
+                st_loggedin = False
             else:
-                dialog_box("You are loggedin!", open_student_frame, success, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\check.png")
+                dialog_box("You are loggedin!", open_student_home_frame, success, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\check.png")
                 clear_login_form()
+                st_loggedin = True
+                te_loggedin = False
+            
             # select_files_gui()
         elif len(name) == 0:
             dialog_box("Enter the details", open_login_frame, error, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\close.png")
@@ -133,6 +184,7 @@ def validate_login(db_name):
 
     except mysql.connector.Error as e:
         print(f"The error '{e}' occurred")
+
 
 ###############################  SELECT FILE LOGIC  ###############################
 def select_files():
@@ -145,7 +197,6 @@ def select_files():
         allPDF[pdf_name] = path
         print(allPDF)
         print(pdf_name)
-
 
 
 ###############################  UPLOADING PDF LOGIC  ###############################
@@ -161,8 +212,12 @@ def upload_files():
 
     path_list.clear()
     print("Upload complete!")
-    calc_plag()
-    plag_frame.place(relx=.5, rely=.5, anchor="center")
+    if te_loggedin:
+        calc_plag()
+        plag_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+        upload_main_frame.pack_forget()
+    else:
+        dialog_box("Files are uploaded", close_dialog_box, success, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\check.png")
     print("Executed")
 
 ###############################  EXTRACTING IMAGE LOGIC  ###############################
@@ -234,21 +289,17 @@ def entire_text():
     # print(entireTxt)
     return entireTxt
 
-############################### CALCULATING THE PLAGIARISM  ###############################+
+############################### CALCULATING THE PLAGIARISM  ###############################
 def calc_plag():
     entireTxt = entire_text()
-    i = 0
-    # pdf_list = []
     for file1, txt1 in entireTxt.items():
         for file2, txt2 in entireTxt.items():
             if file1 < file2:
-                # print(file1, file2)
-                # pdf_list.append(file1)
-                # print("This is pdf list", pdf_list)
                 seq = difflib.SequenceMatcher(None, txt1, txt2)
                 similarity_ratio = seq.ratio()
-                plag.append(round(similarity_ratio*100, 2))
-                # print("This is list of similarity",similarity_ratio)
+                # print("Keys are",allPDF.keys())
+                plag[file1, file2] = round(similarity_ratio*100, 2)
+                print("This is dictionary of similarity",plag)
 
                 matches = seq.get_matching_blocks()
                 # for match in matches:
@@ -256,57 +307,121 @@ def calc_plag():
                 #     print("Match text is:", match_text)
                 if similarity_ratio > 0.8:  # adjust the threshold as needed
                     print(f"{file1} and {file2} have a high plagiarism: {round(similarity_ratio*100, 2)} %\n")
-                    # print("Match text is:", match_text)
                 else:
                     print(f"{file1} and {file2} has plagiarism: {round(similarity_ratio*100, 2)} %\n")
+
+    plag_values = plag.values()
+    global plag_values_list 
+    plag_values_list = list(plag_values)
 
     def dynamic_label():
         pdf_list = list(allPDF)
         length_of_pdf = len(pdf_list)
-        possible_ways = int((length_of_pdf*(length_of_pdf-1))/2)
-        print("This is possible ways",possible_ways)
-        
-        table.grid(rowspan=3, columnspan=3,padx=50,  pady=50, sticky="nsew")
+        print("This is length of pdf",length_of_pdf)
 
-        for i in range(0, length_of_pdf):
-            table.insert(parent='', index='end', iid=i, text='2.', values=(pdf_list[i], 'No'))
-
-
-
-
-
-
-
-        # k = 0
-        # i=0
-        # j=1
-        # for i in range(0, len(pdf_list)):
-        #     for j in range(1, len(pdf_list)):
-        #         try:
-        #             new_label = tk.Label(plag_frame, text=f"{pdf_list[i]}\n b/w \n {pdf_list[j]}",  font=("Roboto", 12), bg="white", fg=button_color)
-        #             new_label.grid(row=j, column=0, pady=(30, 20), sticky="w")
-        #             k = k + 1
-        #         except:
-        #             i=i+1
-        #             print("I am in except block and this is i =", i)
-        #             print("pdf_list:", pdf_list)
-        #             new_label = tk.Label(plag_frame, text=f"{pdf_list[i]}\n b/w \n {pdf_list[j-1]}",  font=("Roboto", 12), bg="white", fg=button_color)
-        #             new_label.grid(row=j, column=0, pady=(30, 20), sticky="w")
-        #             k= k +1
-        #             if(k == possible_ways):
-        #                 print("broken")
-        #                 break
-        #         j = j+1
-        #     if(k == possible_ways):
-        #         break
-        #     i=i+1
-
-        # for i in range(0, len(pdf_list)):
-        #     # print(len(pdf_list))
-        #     new_label = tk.Label(plag_frame, text=plag[i],  font=("Roboto", 12), bg="white", fg=button_color)
-        #     new_label.grid(row=i+1, column=1, pady=(30, 20), sticky="e")
-        #     i=i+1
+        for first_key, value in plag.items():
+              first_char = first_key[0]
+              if first_char in comp_plag:
+                comp_plag[first_char].append(value)
+              else:
+                comp_plag[first_char] = [value]
+        print("This is new dictionary", comp_plag)
+        i = 0
+        for key, value in comp_plag.items():
+            greatest_value = max(value)
+            print(f"The greatest value in the list {key} is {greatest_value}.")
+            plagiarism.append(greatest_value)
+        print(greatest_value)
+                
+        table.place(relx=.5, rely=.55, anchor="center")
+        for i, key in enumerate(allPDF.keys()):
+            try:
+                table.insert(parent='', index='end', iid=i, text=f"{i+1}.", values=(key, plagiarism[i]))
+            except:
+                table.insert(parent='', index='end', iid=i, text=f"{i+1}.", values=(key, plagiarism[i-1]))
     return dynamic_label
+
+############################### CREATING THE ASSIGNMENT CARDS  ###############################
+def open_st_upload(event):
+    student_upload_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+    assignment_main_card_frame.pack_forget()
+
+
+def create_assignment_cards():
+    global count_of_assignment
+    print("this is count", count_of_assignment)
+
+    for i in range(1, count_of_assignment+1):
+        print("this is i", i)
+        assign_card = Frame(assignment_card_frame, bg=button_color, padx=30, pady=15)
+        assign_card.place(relx=0, rely=(0.25*i), anchor="nw", width=1180)
+        
+        assignment_label = Label(assign_card, text=f'{create_assign["assignment title"]}'[0].upper() + f'{create_assign["assignment title"]}'[1:],  font=("Roboto", 16, "bold", "underline"), bg=button_color, fg="white", anchor="w", cursor="hand2")
+        assignment_label.grid(row=1, column=0, sticky="w", pady=(0,10))
+
+        assignment_subject_label = Label(assign_card, text=f"Subject: "+f'{create_assign["subject"]}'[0].upper() + f'{create_assign["subject"]}'[1:],  font=("Roboto", 12), bg=button_color, fg="white", anchor="w")
+        assignment_subject_label.grid(row=2, column=0, sticky="w")
+
+        assignment_marks_label = Label(assign_card, text=f'Marks: {create_assign["marks"]}',  font=("Roboto", 12), bg=button_color, fg="white", anchor="w")
+        assignment_marks_label.grid(row=3, column=0, sticky="w")
+
+        assignment_date_label = Label(assign_card, text=f'Due date: {create_assign["due date"]}',  font=("Roboto", 12), bg=button_color, fg="white", anchor="w")
+        assignment_date_label.grid(row=4, column=0, sticky="w")
+        print("This is student login", st_loggedin)
+
+        if st_loggedin:
+            assignment_label.bind("<Button-1>", open_st_upload)
+
+def clear_assignment_details():
+    assign_name_entry.delete(0, tk.END)
+    subject_name_entry.delete(0, tk.END)
+    t_marks_entry.delete(0, tk.END)
+    due_date_entry.delete(0, END)
+
+def close_assignment_detail_frame():
+    assignment_main_frame.pack_forget()
+
+def get_assignment_details():
+    global count_of_assignment  # declare the variable as global
+    assign_title = assign_name_entry.get()
+    subject = subject_name_entry.get()
+    assign_total_marks = t_marks_entry.get()
+    assign_due_date = due_date_entry.get()
+
+    create_assign["assignment title"] = assign_title
+    create_assign["subject"] = subject
+    create_assign["marks"] = assign_total_marks
+    create_assign["due date"] = assign_due_date
+
+    print(create_assign)
+    print("This is before increment",count_of_assignment)
+
+    if subject == "" and assign_title == "" and assign_total_marks == "":
+        print("This is none")
+        dialog_box("Enter the details", lambda:(close_dialog_box(), open_assignment_main_card_frame()), error, bg_color, "white", r"C:\Users\ANSHARI\Downloads\Python project\close.png")
+        assignment_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+    else:
+        try:
+            # Execute an INSERT query to add the new user to the database
+            assign_table_name = "assignments"
+            mycursor.execute(f"INSERT INTO {assign_table_name} (assign_name, sub_name, total_marks, due_date) VALUES (%s, %s, %s, %s)".format(assign_table_name), (create_assign['assignment title'], create_assign["subject"], create_assign["marks"], create_assign["due date"]))
+            # Commit the changes to the database
+            mydb.commit()
+
+            dialog_box("Assignment created successfullly!", close_dialog_box, success, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\check.png")
+
+        except mysql.connector.Error as e:
+             print(f"The error '{e}' occurred")
+
+        def open_assignment_card_frame():
+            assignment_main_card_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+            close_assignment_detail_frame()
+        open_assignment_card_frame()
+        count_of_assignment = count_of_assignment + 1
+        print("After increment",count_of_assignment)
+
+        return create_assign
+
 dynamic_label = calc_plag()
 
 ###############################  GET DETAILS FOR THE FORM  ###############################
@@ -315,30 +430,28 @@ def get_details():
     subject_name = sub_name_entry.get()
     total_marks = t_marks_entry.get()
     pass_marks = p_marks_entry.get()
-    
-    try:
-        total_marks = int(total_marks)
-        assign_details["tmarks"] = total_marks
-    except ValueError:
-        dialog_box("Number is required for the total marks", open_student_frame, error, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\close.png")
 
-    try:
-        pass_marks = int(pass_marks)
-        assign_details["pmarks"] = pass_marks
-    except ValueError:
-        dialog_box("Number is required for the passing marks", open_student_frame, error, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\close.png")
+    if pass_marks != "":
+        try:
+            pass_marks = int(pass_marks)
+            assign_details["pmarks"] = pass_marks
+        except ValueError:
+            dialog_box("Number is required for the passing marks", open_student_frame, error, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\close.png")
 
-    try:
-        teacher_name = str(teacher_name)
-        assign_details["teacher"] = teacher_name
-    except ValueError:
-        dialog_box("String is required for the teacher name", open_student_frame, error, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\close.png")
+    if total_marks != "":
+        try:
+            total_marks = int(pass_marks)
+            assign_details["tmarks"] = pass_marks
+        except ValueError:
+            dialog_box("Number is required for the passing marks", open_student_frame, error, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\close.png")
 
-    try:
-        subject_name = str(subject_name)
-        assign_details["subject"] = subject_name
-    except ValueError:
-        dialog_box("String is required for the subject name", open_student_frame, error, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\close.png")
+    if teacher_name== "":
+        print(teacher_name)
+        dialog_box("Enter the details", open_student_frame, error, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\close.png")
+    elif subject_name == "":
+        dialog_box("Enter the details", open_student_frame, error, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\close.png")
+    else:
+        dialog_box("Details entered successfully!", lambda:(select_files_gui(), close_dialog_box()), success, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\check.png")
 
 
     clear_details_form()
@@ -346,29 +459,33 @@ def get_details():
 
 ###############################  FILE SELECTING GUI  ###############################
 def select_files_gui():
-    detail_frame.place_forget()
+    detail_main_frame.pack_forget()
     def close_select_files_gui():
-        upload_pdf_frame.place_forget()
+        upload_main_frame.place_forget()
     global path_list
     path_list = []
+    global upload_main_frame
 
-    upload_pdf_frame = Frame(root, bg="white", padx=100, pady=100)
-    upload_pdf_frame.place(relx=.5, rely=.5, anchor="center")
+    upload_main_frame = Frame(root, bg="white")
+    upload_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
 
-    label_frame = Frame(upload_pdf_frame, bg="white")
-    label_frame.grid(row=0, column=0)
+    upload_sub_frame = Frame(upload_main_frame, bg="white")
+    upload_sub_frame.pack(fill=BOTH, expand=True, padx=15, pady=15)
+
+    label_frame = Frame(upload_sub_frame, bg="white")
+    label_frame.place(relx=.5, rely=.5, anchor="center")
 
     label = Label(label_frame, text=f"FOR {(assign_details['subject']).upper()}", font=("Roboto", 18, "bold", "underline"), bg="white", fg=button_color)
-    label.grid(row=0, column=0, pady=(0,20))
+    label.pack(anchor="center", pady=20)
 
-    sel_upl_btn_frame = Frame(upload_pdf_frame, bg="white")
-    sel_upl_btn_frame.grid(row=1, column=0)
+    label = Label(label_frame, text="Note: Pdf's name should be the name of the students", font=("Roboto", 12,), bg="white", fg=button_color)
+    label.pack(anchor="center", pady=(0,10))
+
+    sel_upl_btn_frame = Frame(label_frame, bg="white")
+    sel_upl_btn_frame.pack(anchor="center", pady=5)
 
     create_btn(sel_upl_btn_frame, LEFT, "Select Files", select_files, button_color, "white", 14, 5, 40, btn_hover_color, button_color)
     create_btn(sel_upl_btn_frame, RIGHT, "Upload Files", lambda:(upload_files(), close_select_files_gui(), dynamic_label()), "white", button_color, 14, 5, 40, btn_hover_white, "white")
-
-    label = Label(label_frame, text="Note: Pdf's name should be the name of the students", font=("Roboto", 12,), bg="white", fg=button_color)
-    label.grid(row=2, column=0, pady=(0,20))
 
 score = []
 
@@ -535,22 +652,34 @@ def open_home_frame():
         dialog_box("You are logged out!", close_dialog_box, button_color, "white", "white", r"C:\Users\ANSHARI\Downloads\Python project\logout.png")
         home_main_frame.destroy()
         open_main_frame()
-        detail_frame.place_forget()
+        detail_main_frame.pack_forget()
+        det_logout_button_frame.place_forget()
 
     def open_details_frame():
         home_main_frame.destroy()
-        detail_frame.place(relx=.5, rely=.5, anchor="center")
+        detail_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+        # detail_frame.place(relx=.5, rely=.5, anchor="center")
 
+    global home_main_frame
     home_main_frame = Frame(root, bg="white")
     home_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
 
     home_frame = Frame(home_main_frame, bg="white")
-    home_frame.pack(fill='both', expand=True, padx=15, pady=15)
+    home_frame.pack(fill=BOTH, expand=True, padx=15, pady=15)
+
+    home2_frame = Frame(home_frame, bg="white", padx=50)
+    home2_frame.place(relx=.5, rely=.5, anchor="center")
 
     img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\profile.png")
     img= img.subsample(13)
+
     # Create a label with an image and text, and place it at the top left of the frame
     user_id = Label(home_frame, text=name, font=("Roboto", 14), bg='white', image=img, compound="left",padx=15, pady=10)
+    user_id.image = img
+    user_id.place(relx=0, rely=0, anchor='nw')
+
+    # Create a label with an image and text, and place it at the top left of the frame
+    user_id = Label(detail_frame, text=name, font=("Roboto", 14), bg='white', image=img, compound="left",padx=15, pady=10)
     user_id.image = img
     user_id.place(relx=0, rely=0, anchor='nw')
 
@@ -559,31 +688,48 @@ def open_home_frame():
     logout_button_frame.place(relx=1, rely=0, anchor='ne')
     create_btn(logout_button_frame, RIGHT, "Logout", lambda:(logout()), button_color, "white", 14, 3, 25, btn_hover_color, button_color)
 
-    container_frame1 = Frame(home_frame, bg="white", bd=0, relief="solid", highlightbackground=button_color, highlightthickness=1)
-    container_frame2 = Frame(home_frame, bg="white", bd=0, relief="solid", highlightbackground=button_color, highlightthickness=1)
+    container_frame1 = Frame(home2_frame, bg="white", bd=0, relief="solid", highlightbackground=button_color, highlightthickness=1)
+    container_frame2 = Frame(home2_frame, bg="white", bd=0, relief="solid", highlightbackground=button_color, highlightthickness=1)
+    container_frame3 = Frame(home2_frame, bg="white", bd=0, relief="solid", highlightbackground=button_color, highlightthickness=1)
+    container_frame4 = Frame(home2_frame, bg="white", bd=0, relief="solid", highlightbackground=button_color, highlightthickness=1)
 
-    # Place the frames using the grid geometry manager
-    container_frame1.pack(fill='x', side=LEFT, padx=(200,0), pady=(50,0), ipadx=150, ipady=150)
-    container_frame2.pack(fill='x', side=RIGHT, padx=(0,200), pady=(50,0), ipadx=150, ipady=150)
+    container_frame1.grid(row=0, column=1,sticky="nw",ipadx=140, ipady=110, pady=(50,0), padx=80)
+    container_frame2.grid(row=0, column=2, sticky="ne", ipadx=140, ipady=110, pady=(50,0), padx=80)
+    container_frame3.grid(row=1, column=1,sticky="sw",ipadx=140, ipady=110, pady=(50,0), padx=80)
+    container_frame4.grid(row=1, column=2, sticky="se", ipadx=140, ipady=110, pady=(50,0), padx=80)
 
-    global logo_img1, logo_img
-    logo_img1 = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\assignment.png")
-    logo_img1 = logo_img1.subsample(9)
-    logo_label = tk.Label(container_frame1, image=logo_img1, bg="white")
-    logo_label.place(relx=.5, rely=.45, anchor="s")
-
+    global assignment_img, plag_img, sub_assign_img, assign_img
+    assignment_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\assignment.png")
+    assignment_img = assignment_img.subsample(10)
+    assignment_logo_label = tk.Label(container_frame1, image=assignment_img, bg="white")
+    assignment_logo_label.place(relx=.5, rely=.45, anchor="s")
     button_frame = Frame(container_frame1, bg="white")
-    button_frame.place(relx=.5, rely=.6, anchor='n')
-    create_btn(button_frame, 'bottom', "Create Assignments","hello", button_color, "white", 14, 5, 25, btn_hover_color, button_color)
+    button_frame.place(relx=.5, rely=.9, anchor='s')
+    create_btn(button_frame, 'bottom', "Create Assignments",open_assignment_frame, button_color, "white", 12, 7, 25, btn_hover_color, button_color)
 
-    logo_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\plag.png")
-    logo_img = logo_img.subsample(9)
-    logo_label = tk.Label(container_frame2, image=logo_img, bg="white")
-    logo_label.place(relx=.5, rely=.45, anchor="s")
-
+    plag_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\plag.png")
+    plag_img = plag_img.subsample(10)
+    plag_logo_label = tk.Label(container_frame2, image=plag_img, bg="white")
+    plag_logo_label.place(relx=.5, rely=.45, anchor="s")
     button_frame = Frame(container_frame2, bg="white")
-    button_frame.place(relx=.5, rely=.6, anchor='n')
-    create_btn(button_frame, 'bottom', "Check Plagiarism", open_details_frame, button_color, "white", 14, 5, 25, btn_hover_color, button_color)
+    button_frame.place(relx=.5, rely=.9, anchor='s')
+    create_btn(button_frame, 'bottom', "Check Plagiarism", open_details_frame, button_color, "white", 12, 7, 25, btn_hover_color, button_color)
+
+    assign_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\plag.png")
+    assign_img = assign_img.subsample(10)
+    assignment_logo_label = tk.Label(container_frame3, image=assign_img, bg="white")
+    assignment_logo_label.place(relx=.5, rely=.45, anchor="s")
+    button_frame = Frame(container_frame3, bg="white")
+    button_frame.place(relx=.5, rely=.9, anchor='s')
+    create_btn(button_frame, 'bottom', "Show Assignments", "open_details_frame", button_color, "white", 12, 7, 25, btn_hover_color, button_color)
+
+    sub_assign_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\plag.png")
+    sub_assign_img = sub_assign_img.subsample(10)
+    sub_assign_logo_label = tk.Label(container_frame4, image=sub_assign_img, bg="white")
+    sub_assign_logo_label.place(relx=.5, rely=.45, anchor="s")
+    button_frame = Frame(container_frame4, bg="white")
+    button_frame.place(relx=.5, rely=.9, anchor='s')
+    create_btn(button_frame, 'bottom', "Submitted Assignments", "open_details_frame", button_color, "white", 12, 7, 25, btn_hover_color, button_color)
 
 def open_student_frame():
     close_dialog_box()
@@ -610,18 +756,29 @@ def close_dialog_box():
     dialog_frame.place_forget()
 
 ###############################  DETAILS FORM ###############################
-detail_frame = Frame(root, bg="white", padx=100, pady=100)
 
-subject_frame = Frame(detail_frame, bg="white")
+detail_main_frame = Frame(root, bg="white", padx=15, pady=15)
+# home_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+
+detail_frame = Frame(detail_main_frame, bg="white")
+detail_frame.pack(fill='both', expand=True)
+
+img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\profile.png")
+img= img.subsample(13)
+
+det_form_frame = Frame(detail_frame, bg="white")
+det_form_frame.place(relx=.5, rely=.5, anchor="center")
+
+subject_frame = Frame(det_form_frame, bg="white")
 subject_frame.grid(row=0, column=0, sticky="w", padx=(0,80))
 
-teacher_frame = Frame(detail_frame, bg="white")
+teacher_frame = Frame(det_form_frame, bg="white")
 teacher_frame.grid(row=0, column=1, sticky="w")
 
-t_marks_frame = Frame(detail_frame, bg="white")
+t_marks_frame = Frame(det_form_frame, bg="white")
 t_marks_frame.grid(row=1, column=0,  padx=(0,80), pady=(50,0))
 
-p_marks_frame = Frame(detail_frame, bg="white")
+p_marks_frame = Frame(det_form_frame, bg="white")
 p_marks_frame.grid(row=1, column=1, sticky="w", pady=(50,0))
 
 sub_name = Label(subject_frame, text="Subject",  font=("Roboto", 14, "bold"), bg="white", fg=button_color, anchor="w")
@@ -644,10 +801,10 @@ p_marks_entry = Entry(p_marks_frame, font=("Roboto", 14), bg="white", fg=button_
 p_marks.grid(row=0, column=0, sticky="w")
 p_marks_entry.grid(row=1, column=0, ipady=8, ipadx=50)
 
-submit_button = Button(detail_frame, text="Submit", font=("Roboto", 14, "bold"), bg=button_color, fg="white", bd=0, highlightthickness=0, cursor="hand2", command=lambda:(get_details(), select_files_gui()))
+submit_button = Button(det_form_frame, text="Submit", font=("Roboto", 14, "bold"), bg=button_color, fg="white", bd=0, highlightthickness=0, cursor="hand2", command=lambda:(get_details()," select_files_gui()"))
 submit_button.grid(row=2, column=1, pady=(50,0), ipadx=125, ipady=5, sticky="e")
 
-back_button =  Button(detail_frame, text="Back", font=("Roboto", 14, "bold"), bg="white", fg=button_color,bd =1, highlightthickness=0, relief="solid", highlightbackground="pink", cursor="hand2", command=close_detail_frame)
+back_button =  Button(det_form_frame, text="Back", font=("Roboto", 14, "bold"), bg="white", fg=button_color,bd =0, highlightthickness=0, relief="solid", highlightbackground="pink", cursor="hand2", command=close_detail_frame)
 
 back_button.grid(row=2, column=0, pady=(50,0), ipadx=135, ipady=5, sticky="w")
 
@@ -657,65 +814,118 @@ submit_button.bind("<Leave>", lambda event: on_leave(event, button_color))
 back_button.bind("<Enter>", lambda event: on_enter(event, btn_hover_white))
 back_button.bind("<Leave>", lambda event: on_leave(event, "white"))
 
+
+###############################  CREATE ASSIGMENT DETAILS FORM ###############################
+
+assignment_main_frame = Frame(root, bg="white", padx=15, pady=15)
+# assignment_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+
+assignment_frame = Frame(assignment_main_frame, bg="white")
+assignment_frame.pack(fill='both', expand=True)
+
+img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\profile.png")
+img= img.subsample(13)
+
+assign_form_frame = Frame(assignment_frame, bg="white")
+assign_form_frame.place(relx=.5, rely=.55, anchor="center")
+
+assignment_title_frame = Frame(assign_form_frame, bg="white")
+assignment_title_frame.grid(row=0, column=0, sticky="w", padx=(0,80))
+
+subject_frame = Frame(assign_form_frame, bg="white")
+subject_frame.grid(row=0, column=1, sticky="w")
+
+t_marks_frame = Frame(assign_form_frame, bg="white")
+t_marks_frame.grid(row=1, column=0,  padx=(0,80), pady=(50,0))
+
+date_frame = Frame(assign_form_frame, bg="white")
+date_frame.grid(row=1, column=1, sticky="w", pady=(50,0))
+
+create_assign_heading = Label(assignment_frame, text="Create Assignments".upper(),  font=("Roboto", 25, "bold"), bg="white", fg=button_color, anchor="w")
+create_assign_heading.pack(pady=(40,0))
+
+assign_name = Label(assignment_title_frame, text="Title",  font=("Roboto", 14, "bold"), bg="white", fg=button_color, anchor="w")
+assign_name_entry = Entry(assignment_title_frame, font=("Roboto", 14), bg="#fff", fg=label_color, bd=0, highlightthickness=1, highlightbackground=button_color, highlightcolor=button_color)
+assign_name.grid(row=0, column=0, sticky="w")
+assign_name_entry.grid(row=1, column=0, ipady=8, ipadx=50)
+
+subject_name = Label(subject_frame, text="Subject",  font=("Roboto", 14, "bold"), bg="white", fg=button_color)
+subject_name_entry = Entry(subject_frame, font=("Roboto", 14), bg="#fff", fg=label_color, bd=0, highlightthickness=1, highlightbackground=button_color, highlightcolor=button_color)
+subject_name.grid(row=0, column=0, sticky="w")
+subject_name_entry.grid(row=1, column=0, sticky="w", ipady=8, ipadx=50)
+
+t_marks = Label(t_marks_frame, text="Total Marks",  font=("Roboto", 14, "bold"), bg="white", fg=button_color)
+t_marks_entry = Entry(t_marks_frame, font=("Roboto", 14), bg="white", fg=label_color, bd=0, highlightthickness=1, highlightbackground=button_color, highlightcolor=button_color)
+t_marks.grid(row=0, column=0, sticky="w")
+t_marks_entry.grid(row=1, column=0,ipady=8, ipadx=50)
+
+due_date = Label(date_frame, text="Due date",  font=("Roboto", 14, "bold"), bg="white", fg=button_color)
+due_date_entry = DateEntry(date_frame, font=("Roboto", 14), bg="white", fg=button_color)
+due_date.grid(row=0, column=0, sticky="w")
+
+due_date_entry.grid(row=1, column=0, ipady=8, ipadx=85)
+submit_button = Button(assign_form_frame, text="Done", font=("Roboto", 14, "bold"), bg=button_color, fg="white", bd=0, highlightthickness=0, cursor="hand2", command=lambda:(get_assignment_details(), close_assignment_detail_frame(), create_assignment_cards(), clear_assignment_details()))
+submit_button.grid(row=2, column=1, pady=(50,0), ipadx=134, ipady=5, sticky="e")
+
+back_button =  Button(assign_form_frame, text="Back", font=("Roboto", 14, "bold"), bg="white", fg=button_color,bd =0, highlightthickness=0, relief="solid", highlightbackground="pink", cursor="hand2", command=close_assignment_frame)
+back_button.grid(row=2, column=0, pady=(50,0), ipadx=135, ipady=5, sticky="w")
+
+submit_button.bind("<Enter>", lambda event: on_enter(event, btn_hover_color))
+submit_button.bind("<Leave>", lambda event: on_leave(event, button_color))
+
+back_button.bind("<Enter>", lambda event: on_enter(event, btn_hover_white))
+back_button.bind("<Leave>", lambda event: on_leave(event, "white"))
+
+
+###############################  ASSIGNMENT CREATED CARDS  ###############################
+
+assignment_main_card_frame = Frame(root, bg="white", padx=15, pady=15)
+
+assignment_card_frame = Frame(assignment_main_card_frame, bg="white", padx=20)
+assignment_card_frame.pack(fill='both', expand=True)
+
+img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\profile.png")
+img= img.subsample(13)
+
+assignment_header_frame = Frame(assignment_card_frame, bg="white")
+assignment_header_frame.place(relx=.5, rely=0.1, anchor="center", width=1180, height=100)
+
+assign_heading = Label(assignment_header_frame, text="Assignments".upper(),  font=("Roboto", 25, "bold"), bg="white", fg=button_color, anchor="w")
+assign_heading.place(relx=0, rely=.5, anchor="w")
+
+back_button =  Button(assignment_header_frame, text="Back", font=("Roboto", 14, "bold"), bg=button_color, fg="white",bd =0, highlightthickness=0, relief="solid",highlightbackground="pink", cursor="hand2", padx=25, pady=5, command=close_assignment_main_card_frame)
+back_button.place(relx=1, rely=.5, anchor='e')
+
+back_button.bind("<Enter>", lambda event: on_enter(event, btn_hover_color))
+back_button.bind("<Leave>", lambda event: on_leave(event, button_color))
+
+
 ###############################  GUI FOR SHOWING THE PLAGIARISM PERCENTAGE  ###############################
-plag_frame = Frame(root, bg="white", padx=100, pady=100)
-# plag_frame.place(relx=.5, rely=.5, anchor="center")
 
-sub_plag_frame = Frame(plag_frame, bg="white", padx=0, pady=10)
-sub_plag_frame.grid(row=0, column=0, sticky="nw")
+plag_main_frame = Frame(root, bg="white")
+# student_upload_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+# plag_main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
 
-teach_plag_frame = Frame(plag_frame, bg="white", padx=0, pady=10)
-teach_plag_frame.grid(row=0, column=1, sticky="ne")
+plag_sub_frame = Frame(plag_main_frame, bg="white")
+plag_sub_frame.pack(fill=BOTH, expand=True, padx=15, pady=15)
 
-teach_label = Label(sub_plag_frame, text="Professor:",  font=("Roboto", 12), bg="white", fg=button_color)
-teach_label.grid(row=0, column=0, sticky="w", pady=(40,0))
+sub_plag_frame = Frame(plag_sub_frame, bg="white", padx=0, pady=10)
+sub_plag_frame.pack(anchor="center")
 
-teach_name_label = Label(sub_plag_frame, text="Rohit",  font=("Roboto", 12,"underline", "bold"), bg="white", fg=button_color)
-teach_name_label.grid(row=0,column=1,sticky="w", pady=(40,0))
+teach_plag_frame = Frame(plag_sub_frame, bg="pink", padx=0, pady=10)
+teach_plag_frame.pack(anchor="center")
 
-sub_label = Label(teach_plag_frame, text="Subject:",  font=("Roboto", 12), bg="white", fg=button_color)
-sub_label.grid(row=0,column=2,sticky="e", pady=(40,0))
-
-sub_name_label = Label(teach_plag_frame, text="Maths",  font=("Roboto", 12,"underline", "bold"), bg="white", fg=button_color)
-sub_name_label.grid(row=0,column=3,sticky="e", pady=(40,0))
-
-plag_label = Label(plag_frame, text="Plagiarism Percentage",  font=("Roboto", 30, "bold"), bg="white", fg=button_color)
-plag_label.grid(row=0,columnspan=2,sticky="nsew", pady=(0, 50))
-
-# st_one = Label(plag_frame, text="Yash Gupta\nb/w\n Sahil",  font=("Roboto", 15), bg="pink", fg=button_color, anchor="w")
-# st_one.grid(row=1, column=0, sticky="w", pady=(30, 20))
-
-# st_one = Label(plag_frame, text="Sahil",  font=("Roboto", 15), bg="pink", fg=button_color)
-# st_one.grid(row=2, column=0, sticky="w", pady=(30, 20))
-
-# st_one = Label(plag_frame, text="Ahmed Ansari",  font=("Roboto", 15), bg="pink", fg=button_color)
-# st_one.grid(row=2, column=0, sticky="w", pady=(0, 20))
-
-# st_one = Label(plag_frame, text="Amaan Khan",  font=("Roboto", 15), bg="pink", fg=button_color)
-# st_one.grid(row=3, column=0, sticky="w", pady=(0, 20))
-
-# st_plag = Label(plag_frame, text="12%",  font=("Roboto", 15), bg="pink", fg=button_color)
-# st_plag.grid(row=1, column=1, sticky="e", pady=(30, 20)) 
-
-# st_plag = Label(plag_frame, text="12%",  font=("Roboto", 15), bg="pink", fg=button_color)
-# st_plag.grid(row=2, column=1, sticky="e", pady=(0, 20))            
-
-# st_plag = Label(plag_frame, text="12%",  font=("Roboto", 15), bg="pink", fg=button_color)
-# st_plag.grid(row=3, column=1, sticky="e", pady=(0, 20))
+plag_label = Label(plag_sub_frame, text="Plagiarism Percentage",  font=("Roboto", 30, "bold"), bg="white", fg=button_color, pady=15)
+plag_label.pack(anchor="center")
 
 # Create the table
 table = ttk.Treeview(root, columns=('Student name', 'Plagiarism found'))
+# table.place(relx=.5, rely=.55, anchor="center")
 
 # Define the headings for each column
 table.heading('#0', text='Index'.upper())
 table.heading('Student name', text='Student name'.upper())
 table.heading('Plagiarism found', text='Plagiarism found'.upper())
-
-# # Add data to the table
-# table.insert(parent='', index='end', iid='0', text='1.', values=('Alice', 'Yes'))
-# table.insert(parent='', index='end', iid='1', text='2.', values=('Bob', 'No'))
-# table.insert(parent='', index='end', iid='2', text='3.', values=('Charlie', 'Yes'))
-
 
 # Set the column widths and alignments
 table.column('Student name', width=400, anchor='center')
@@ -729,9 +939,109 @@ style.configure('Treeview.Heading', background='white', foreground=button_color,
 style.configure('Treeview.Heading', padding=(0, 25))
 
 # Place the table using grid() method and set padding between cells
-
 for i in range(3):
     root.grid_rowconfigure(i, weight=1)
     root.grid_columnconfigure(i, weight=1)
+
+
+###############################  STUDENT HOME PAGE  ###############################
+
+student_home_frame = Frame(root, bg="white")
+# student_home_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+
+student_frame = Frame(student_home_frame, bg="white")
+student_frame.pack(fill=BOTH, expand=True, padx=15, pady=15)
+
+student_home2_frame = Frame(student_frame, bg="white", padx=50)
+student_home2_frame.place(relx=.5, rely=.5, anchor="center")
+
+img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\profile.png")
+img= img.subsample(13)
+
+# Create a label with an image and text, and place it at the top left of the frame
+user_id = Label(student_frame, text="get_user_name()", font=("Roboto", 14), bg='white', image=img, compound="left",padx=15, pady=10)
+user_id.image = img
+user_id.place(relx=0, rely=0, anchor='nw')
+
+# Create a label with an image and text, and place it at the top left of the frame
+user_id = Label(detail_frame, text="name", font=("Roboto", 14), bg='white', image=img, compound="left",padx=15, pady=10)
+user_id.image = img
+user_id.place(relx=0, rely=0, anchor='nw')
+
+# Logout button
+logout_button_frame = Frame(student_home_frame, bg="white")
+logout_button_frame.place(relx=1, rely=0, anchor='ne')
+create_btn(logout_button_frame, RIGHT, "Logout", lambda:("logout()"), button_color, "white", 14, 3, 25, btn_hover_color, button_color)
+
+container_frame1 = Frame(student_home2_frame, bg="white", bd=0, relief="solid", highlightbackground=button_color, highlightthickness=1)
+container_frame2 = Frame(student_home2_frame, bg="white", bd=0, relief="solid", highlightbackground=button_color, highlightthickness=1)
+
+container_frame1.grid(row=0, column=1,sticky="nw",ipadx=140, ipady=110, pady=(50,0), padx=80)
+container_frame2.grid(row=0, column=2, sticky="ne", ipadx=140, ipady=110, pady=(50,0), padx=80)
+
+global show_assignment_img, plag_img, sub_assign_img, assign_img
+show_assignment_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\assignment.png")
+show_assignment_img = show_assignment_img.subsample(10)
+show_assignment_logo_label = tk.Label(container_frame1, image=show_assignment_img, bg="white")
+show_assignment_logo_label.place(relx=.5, rely=.45, anchor="s")
+button_frame = Frame(container_frame1, bg="white")
+button_frame.place(relx=.5, rely=.9, anchor='s')
+create_btn(button_frame, 'bottom', "Show Assignments",lambda:(open_assignment_card_frame(), create_assignment_cards()), button_color, "white", 12, 7, 25, btn_hover_color, button_color)
+
+show_marks_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\assignment.png")
+show_marks_img = show_marks_img.subsample(10)
+show_marks_logo_label = tk.Label(container_frame1, image=show_marks_img, bg="white")
+show_marks_logo_label.place(relx=.5, rely=.45, anchor="s")
+button_frame = Frame(container_frame2, bg="white")
+button_frame.place(relx=.5, rely=.9, anchor='s')
+create_btn(button_frame, 'bottom', "Show Marks",open_assignment_frame, button_color, "white", 12, 7, 25, btn_hover_color, button_color)
+
+
+###############################  STUDENT FILE UPLOAD GUI  ###############################
+
+student_upload_frame = Frame(root, bg="white")
+# student_upload_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+
+student_frame = Frame(student_upload_frame, bg="white")
+student_frame.pack(fill=BOTH, expand=True, padx=15, pady=15)
+
+img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\profile.png")
+img= img.subsample(13)
+
+# Create a label with an image and text, and place it at the top left of the frame
+user_id = Label(student_frame, text="get_user_name()", font=("Roboto", 14), bg='white', image=img, compound="left",padx=15, pady=10)
+user_id.image = img
+user_id.place(relx=0, rely=0, anchor='nw')
+
+# Create a label with an image and text, and place it at the top left of the frame
+user_id = Label(detail_frame, text="name", font=("Roboto", 14), bg='white', image=img, compound="left",padx=15, pady=10)
+user_id.image = img
+user_id.place(relx=0, rely=0, anchor='nw')
+
+# Logout button
+back_button_frame = Frame(student_upload_frame, bg="white")
+back_button_frame.place(relx=1, rely=0, anchor='ne')
+create_btn(back_button_frame, RIGHT, "Back", open_student_home_frame, button_color, "white", 14, 3, 25, btn_hover_color, button_color)
+
+st_upload_pdf_frame = Frame(student_frame, bg="white", padx=100, pady=100)
+st_upload_pdf_frame.place(relx=.5, rely=.5, anchor="center")
+
+st_label_frame = Frame(st_upload_pdf_frame, bg="white")
+st_label_frame.grid(row=0, column=0)
+
+st_label = Label(st_label_frame, text=f"FOR Subject", font=("Roboto", 18, "bold", "underline"), bg="white", fg=button_color)
+st_label.grid(row=0, column=0, pady=(0,20))
+
+st_sel_upl_btn_frame = Frame(st_upload_pdf_frame, bg="white")
+st_sel_upl_btn_frame.grid(row=1, column=0)
+
+create_btn(st_sel_upl_btn_frame, LEFT, "Select Files", select_files, button_color, "white", 14, 5, 40, btn_hover_color, button_color)
+create_btn(st_sel_upl_btn_frame, RIGHT, "Upload Files", lambda:(upload_files(), "close_select_files_gui(), dynamic_label()"), "white", button_color, 14, 5, 40, btn_hover_white, "white")
+
+st_label = Label(st_label_frame, text="Note: Pdf's name should be the name of the students", font=("Roboto", 12,), bg="white", fg=button_color)
+st_label.grid(row=2, column=0, pady=(0,20))
+
+
+
 
 root.mainloop()
