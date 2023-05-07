@@ -32,7 +32,7 @@ global code_entered
 code_entered = ""
 allPDF = {}
 assign_details = {}
-plag = {}
+# plag = {}
 avg_plag = {}
 plag_values_list = []
 calc_avg_plag = []
@@ -48,9 +48,9 @@ st_loggedin = False
 te_loggedin = False
 sh_assign = False
 path_list = []
-plagiarism = []
-mark = []
-comp_plag = {}
+# plagiarism = []
+# mark = []
+# comp_plag = {}
 # is_joined_sec = False
 global is_created_sec
 is_created_sec = False
@@ -124,7 +124,7 @@ def open_home_frame():
     home_main_frame.pack(fill=BOTH, expand=True)
 
 def open_options_panel(event, team_card_name_label):
-    global clicked_team_name
+    global clicked_team_name, no_assignment_label, user_who
     home2_frame.place(relx=0, rely=.5, anchor="w")
     create_team_btn.grid_forget()
     create_join_btn.grid_forget()
@@ -142,7 +142,40 @@ def open_options_panel(event, team_card_name_label):
     print(clicked_team_name)
     join_welcome_label.place_forget()
     welcome_label.config(text=f"Welcome to {clicked_team_name} team", anchor="e")
-
+    assignment_label.grid(row=0, column=0, sticky="nsew", pady=(0,40), ipadx=30, ipady=8)
+    plagiarism_label.grid(row=2, column=0, sticky="nsew", ipadx=30, ipady=8)
+    back_btn.place(relx=.83, rely=.04)
+    show_assignment_btn.place_forget()
+    create_assignment_btn.place_forget()
+    select_file_btn.place_forget()
+    upload_file_btn.place_forget()
+    create_assign_heading.place_forget()
+    assignment_frame.place_forget()
+    assign_heading.place_forget()
+    try:
+        for frame in uploaded_work_frames:
+            frame.destroy()  # or frame.pack_forget()
+        no_assignment_label.place_forget()
+    except:
+        print("error occured")
+    update_assignment_cards()
+    welcome_label.place(relx=.5, rely=.56, anchor="center")
+    welcome.place(relx=.5, rely=.42, anchor="center")
+    assignment_card_frame.place_forget()
+    work_heading.place_forget()
+    team_code_label.grid(row=0, column=1, padx=(15,50))
+    try:
+        query = (f"SELECT code FROM create_teams WHERE teamname = '{clicked_team_name}' and username = '{user_who}'")
+        mycursor.execute(query)
+        print("This is query",query)
+        # Get the result of the query
+        result = mycursor.fetchone()
+        teamcode = list(result)
+        print("This is details corresponding to the code", teamcode[0])
+    except mysql.connector.Error as e:
+        print(f"The error '{e}' occurred")
+    team_code_label.config(text=f'Code: {teamcode[0]}')
+    max_marks_frame.place_forget()
 
 def close_create_join_btn():
     my_teams_btn.place_forget()
@@ -152,7 +185,6 @@ def open_joined_team_card():
     global user_who
     join_user_label.config(text=user_who)
     join_user_label.grid(row=0, column=0, padx=(15,50))
-
     joined_team_cards_frame.place(x=0, y=0, width=screen_width, height=screen_height)
 
 def back_joined_team():
@@ -160,14 +192,15 @@ def back_joined_team():
     create_back_btn.grid(row=0, column=1, padx=(15,50))
     user_label.grid(row=0, column=0, padx=(15,50))
 
-
-
 def open_my_team_card():
     global user_who
     my_team_cards_frame.place(x=0, y=0, height=screen_height, width=screen_width)
     create_back_btn.grid(row=0, column=1, padx=(15,50))
     user_label.config(text=user_who)
     user_label.grid(row=0, column=0, padx=(15,50))
+    team_code_label.grid_forget()
+    clear_table(table)
+    table.place_forget()
 
 def close_joined_team_card():
     joined_team_cards_frame.place_forget()
@@ -195,35 +228,19 @@ def hide_back_btn():
     create_logout_btn.grid(row=0, column=2, padx=(20,80))
     join_user_label.grid_forget()
 
-# def joined_sec():
-#     global is_joined_sec, is_created_sec
-#     is_joined_sec = True
-#     is_created_sec = False
-#     return is_joined_sec
-
-# def created_sec():
-#     global is_joined_sec, is_created_sec
-#     is_joined_sec = False
-#     is_created_sec = True
-#     return is_created_sec
-
 def logout():
+    global team_detail_frame, team_card_frame, my_team_cards_frame
     home_main_frame.pack_forget()
     main_frame.pack(fill=BOTH, expand=True, padx=50, pady=50)
+    for frame in my_team_cards_frame.winfo_children():
+        frame.destroy()
+    joined_team_cards_frame.pack_forget()
+    for frame in joined_team_cards_frame.winfo_children():
+        frame.destroy()
+    joined_team_cards_frame.pack_forget()
 
 def close_logout_btn():
     create_logout_btn.grid_forget()
-
-# def on_enter_team_card(event):
-#     global team_card_name
-#     event.widget.config(bg='#40bbec')
-#     team_card_name.bind("<Enter>", lambda event: team_card_name.config(bg="#40bbec"))
-#     team_card_subname.bind("<Enter>", on_enter_team_card)
-
-# def on_leave_team_card(event):
-#     event.widget.config(bg='white')
-#     team_card_subname.bind("<Leave>", on_leave_team_card)
-#     team_card_name.bind("<Leave>", on_leave_team_card)
 
 
 ###############################  DIALOG BOX  ###############################
@@ -245,7 +262,6 @@ def dialog_box(msg, cmd, bgColor, btnColor, labelColor, logo_path):
 
 def close_dialog_box():
     dialog_frame.place_forget()
-
 
 def close_team_modal():
     modal_frame.place_forget()
@@ -276,6 +292,15 @@ def open_join_options_panel(event, team_card_name_label):
     team_card_name_label.config(text=clicked_team_name)
     print(clicked_team_name)
     join_welcome_label.config(text=f"Welcome to {clicked_team_name} team", anchor="e")
+    join_show_assignment_btn.place_forget()
+    join_assign_heading.place_forget()
+    join_assignment_card_frame.place_forget()
+    join_welcome_label.place(relx=.5, rely=.5, anchor="center")
+    no_join_assignment_label.place_forget()
+    join_uploaded_work.place_forget()
+    join_work_heading.place_forget()
+    join_select_file_btn.place_forget()
+    join_upload_file_btn.place_forget()
 
 ###############################  CREATING THE TEAM  ###############################
 def create_team():
@@ -302,7 +327,7 @@ def create_team():
             mycursor.execute("INSERT INTO {} (username, teamname, subname, profname, description, code) VALUES (%s, %s, %s, %s, %s, %s)".format(db_name), (user_who, t_name, sub_name, te_name, desc, team_code))
             mydb.commit()
 
-            dialog_box("Your team has been created", lambda:(close_dialog_box()) , success, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\check.png")
+            dialog_box(f"Your team has been created\nTeam code is {team_code}", lambda:(close_dialog_box()) , success, bg_color, label_color, r"C:\Users\ANSHARI\Downloads\Python project\check.png")
             clear_create_team_form()
         else:
             messagebox.showerror("Some other error")
@@ -387,7 +412,7 @@ def fetch_all_teams_joined():
 
 ###############################  FETCH THE CREATED TEAM DETAIL CORRESPONDING TO USERNAME  ###############################
 def fetch_teams():
-    global team_card_name, team_card_subname
+    global team_card_name, team_card_subname, team_detail_frame, team_card_frame
     db_name = "create_teams"
     try:
         # Execute a SELECT query to check if the username and password exist in the database
@@ -399,10 +424,11 @@ def fetch_teams():
         print("This is details corresponding to username", display_teams_result)
 
         # If the result is not empty, the user is logged in
-        my_team_cards_frame.place(x=0, y=0, height=screen_height, width=screen_width)
-        my_team_cards_frame.config(bg=button_color)
+
 
         if display_teams_result:
+            my_team_cards_frame.place(x=0, y=0, height=screen_height, width=screen_width)
+            my_team_cards_frame.config(bg=button_color)
             row_index = 0
             for i in range(len(display_teams_result)):
                 global team_card_frame
@@ -642,25 +668,27 @@ def entire_text():
     entireTxt = ''
     imgTxt = readFrmImg(allPDF)
     entireTxt = getTxt(allPDF, imgTxt)
-    print("This is entire text",entireTxt)
+    # print("This is entire text",entireTxt)
     return entireTxt
+
+def get_max_marks():
+    global marks
+    marks = max_marks_entry.get()
+    return marks
 
 ############################### CALCULATING THE PLAGIARISM  ###############################
 def calc_plag():
+    global user_who, marks
+    plag = {}
     entireTxt = entire_text()
     for file1, txt1 in entireTxt.items():
         for file2, txt2 in entireTxt.items():
             if file1 < file2:
                 seq = difflib.SequenceMatcher(None, txt1, txt2)
                 similarity_ratio = seq.ratio()
-                # print("Keys are",allPDF.keys())
-                plag[file1, file2] = round(similarity_ratio*100, 2)
-                print("This is dictionary of similarity",plag)
 
-                matches = seq.get_matching_blocks()
-                # for match in matches:
-                #     match_text = txt1[match.a:match.a+match.size]
-                #     print("Match text is:", match_text)
+                plag[file1, file2] = round(similarity_ratio*100, 2)
+
                 if similarity_ratio > 0.8:  # adjust the threshold as needed
                     print(f"{file1} and {file2} have a high plagiarism: {round(similarity_ratio*100, 2)} %\n")
                 else:
@@ -669,59 +697,82 @@ def calc_plag():
     plag_values = plag.values()
     global plag_values_list 
     plag_values_list = list(plag_values)
+    print("This is plag",plag)
 
     def dynamic_label():
+        max_marks = 0
+        plagiarism = []
+        mark = []
+        comp_plag = {}
         pdf_list = list(allPDF)
+        print("this pdf list", pdf_list)
         length_of_pdf = len(pdf_list)
-        print("This is length of pdf",length_of_pdf)
 
         for first_key, value in plag.items():
               first_char = first_key[0]
+              sec_char = first_key[1]
+
               if first_char in comp_plag:
+                print("I am comp plag", comp_plag)
                 comp_plag[first_char].append(value)
+                if sec_char in comp_plag:
+                    comp_plag[sec_char].append(value)
+                else:
+                    comp_plag[sec_char] = [value]
+                print("Value appended", comp_plag)
               else:
                 comp_plag[first_char] = [value]
+                if sec_char in comp_plag:
+                    comp_plag[sec_char].append(value)
+                else:
+                    comp_plag[sec_char] = [value]
+
         print("This is new dictionary", comp_plag)
         i = 0
         for key, value in comp_plag.items():
             greatest_value = max(value)
             print(f"The greatest value in the list {key} is {greatest_value}.")
             plagiarism.append(greatest_value)
-        print(greatest_value)
+        print("Plagiarism Found", plagiarism)
         table.place(relx=.475, rely=.5, anchor="center", height=500)
-
+        max_marks = int(get_max_marks())
+        print("I am max marks", type(max_marks))
         for i in range(0, length_of_pdf-1):
             if 0.0 <= plagiarism[i] <= 21.0:
-                marks = 25
-                print(marks)
+                marks = int(max_marks)
             elif 21.0 <= plagiarism[i] <= 41.0:
-                random_float = random.uniform(21, 25)
-                marks = int(round(random_float, 0))
-                print(marks)
+                marks = int(max_marks * 0.75)
+                # print(marks)
             elif 41.0 <= plagiarism[i] <= 61.0:
-                random_float = random.uniform(15, 20)
-                marks = int(round(random_float, 0))
-                print(marks)
+                marks = int(max_marks * 0.5)
+                # print(marks)
             elif 61.0 <= plagiarism[i] <= 81.0:
-                random_float = random.uniform(11, 15)
-                marks = int(round(random_float, 0))
-                print(marks)
+                marks = int(max_marks * 0.25)
+                # print(marks)
             elif 81.0 <= plagiarism[i] <= 101.0:
-                random_float = random.uniform(5, 11)
-                marks = int(round(random_float, 0))
-                print(marks)
+                marks = int(max_marks * 0.1)
             mark.append(marks)
-        print("This is marks", mark)
-
         for i, key in enumerate(allPDF.keys()):
-            try:
-                table.insert(parent='', index='end', iid=i, text=f"{i+1}.", values=(key, plagiarism[i], mark[i]))
-                
-            except:
-                table.insert(parent='', index='end', iid=i, text=f"{i+1}.", values=(key, plagiarism[i-1], mark[i-1]))
+            print(key)
 
+            try:
+                table.insert(parent='', index='end', iid=i, text=f"{i+1}.", values=(f"{key} {plagiarism[i]} {mark[i]}/{max_marks}"))
+                mycursor.execute(f"INSERT INTO assignment_marks (teamname, username, pdf_name, plagiarism, marks, total_marks) VALUES (%s, %s, %s, %s, %s, %s)", (clicked_team_name, user_who, key, plagiarism[i], mark[i], max_marks))
+                print("Data inserted")
+                mydb.commit()
+                print("This is i", i)
+            except:
+                table.insert(parent='', index='end', iid=i, text=f"{i+1}.", values=(f"{key} {plagiarism[i]} {mark[i-1]}/{max_marks}"))
+                mycursor.execute(f"INSERT INTO assignment_marks (teamname, username, pdf_name, plagiarism, marks, total_marks) VALUES (%s, %s, %s, %s, %s, %s)", (clicked_team_name, user_who, key, plagiarism[i], mark[i-1], max_marks))
+                print("This is except i", i)
+                print("Except")
+        comp_plag.clear()
     dynamic_label()
 
+def clear_table(table):
+    # Delete all existing rows in the table
+    table.delete(*table.get_children())
+    print("cleared")
 
 ###############################  SELECT FILE LOGIC  ###############################
 def join_select_files():
@@ -764,7 +815,7 @@ def joined_upload_files():
 
     path_list.clear()
     print("Upload complete!")
-    print("This is file path", allPDF.values())
+    # print("This is file path", allPDF.values())
 
     if len(allPDF.values()) == 0:
         print("No files selected!")
@@ -878,8 +929,8 @@ home_main_frame = tk.Frame(root, bg="white")
 home_sub_frame = Frame(home_main_frame, bg="white", width=screen_width, height=screen_height)
 home_sub_frame.place(x=0,y=0)
 
-my_team_cards_frame = Frame(home_sub_frame, bg="white", width=screen_width, height=screen_height)
-my_team_cards_frame.place(x=0, y=0, height=screen_height, width=screen_width)
+my_team_cards_frame = Frame(home_sub_frame, bg=button_color, width=screen_width, height=screen_height)
+my_team_cards_frame.place(x=0, y=0, width=screen_width, height=screen_height)
 
 joined_team_cards_frame = Frame(home_sub_frame, bg=button_color, width=screen_width, height=screen_height)
 joined_team_cards_frame.place(x=0, y=0, width=screen_width, height=screen_height)
@@ -913,8 +964,10 @@ create_logout_btn.grid(row=0, column=2, padx=(20,80))
 # global user_img
 user_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\user (3).png")
 user_img= user_img.subsample(15)
-user_label = Label(button_frame, text="user_who", fg="white", bg=button_color, font=("roboto", 14, "bold"), compound=LEFT, image=user_img, padx=15)
+user_label = Label(button_frame, text="username", fg="white", bg=button_color, font=("roboto", 14, "bold"), compound=LEFT, image=user_img, padx=15)
 user_label.image = user_img
+
+team_code_label = Label(button_frame, text="team code", fg=button_color, bg="white", font=("roboto", 14), padx=15, pady=5)
 
 not_created_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\add-friend.png")
 not_created_img= not_created_img.subsample(7)
@@ -961,7 +1014,8 @@ join_right_frame.grid(row=0, column=1, sticky="w")
 
 right_frame = Frame(home2_frame, bg="white", width=screen_width-255, height=screen_height-140)
 right_frame.grid(row=0, column=1, sticky="w")
-uploaded_work = Frame(right_frame, bg=button_color, padx=30, pady=15)
+# uploaded_work = Frame(right_frame, bg=button_color, padx=30, pady=15)
+
 
 assignment_label = Label(left_frame, text="Assignments", font=("Roboto", 15), bg="white", fg=button_color, anchor="center", cursor="hand2")
 assignment_label.grid(row=0, column=0, sticky="nsew", pady=(0,40), ipadx=30, ipady=8)
@@ -978,10 +1032,10 @@ welcome = Label(right_frame,  font=("Roboto", 14), bg="white", fg="white", image
 welcome.image = welcome_img
 welcome.place(relx=.5, rely=.42, anchor="center")
 
-back_btn = Button(right_frame, text="Back", padx=25, pady=5, bg=button_color, fg="white", bd=0, highlightbackground=button_color, highlightthickness=0,font=("roboto", 14, "bold"), cursor="hand2", command=lambda:(left_frame.grid_forget(), right_frame.grid_forget(), home2_frame.place_forget(), open_my_team_card(), my_teams_btn.place_forget(), joined_teams_btn.place_forget(), update_assignment_cards()))
+back_btn = Button(right_frame, text="Back", padx=25, pady=5, bg=button_color, fg="white", bd=0, highlightbackground=button_color, highlightthickness=0,font=("roboto", 14, "bold"), cursor="hand2", command=lambda:(left_frame.grid_forget(), right_frame.grid_forget(), home2_frame.place_forget(), open_my_team_card(), my_teams_btn.place_forget(), joined_teams_btn.place_forget()))
 back_btn.place(relx=.83, rely=.04)
 
-special_back_btn = Button(right_frame, text="Back", padx=25, pady=5, bg=button_color, fg="white", bd=0, highlightbackground=button_color, highlightthickness=0,font=("roboto", 14, "bold"), cursor="hand2", command=lambda:())
+special_back_btn = Button(right_frame, text="Back", padx=25, pady=5, bg="pink", fg="white", bd=0, highlightbackground=button_color, highlightthickness=0,font=("roboto", 14, "bold"), cursor="hand2", command=lambda:())
 
 show_assignment_btn = Button(right_frame, text="Show assignments", padx=25, pady=5, bg="white", fg=button_color, bd=0, highlightbackground=button_color, highlightthickness=0,font=("roboto", 15, "underline"), cursor="hand2", command=lambda:(open_assignment_cards()))
 
@@ -997,6 +1051,17 @@ select_file_btn = Button(right_frame, text="Select files", padx=25, pady=10, bg=
 upload_icon = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\uplaod.png")
 upload_icon= upload_icon.subsample(12)
 upload_file_btn = Button(right_frame, text="Upload files", padx=25, pady=10, bg="white", fg=button_color, bd=0, highlightbackground=button_color, highlightthickness=0,font=("roboto", 23, "bold"),image=upload_icon, compound=LEFT, cursor="hand2", command=lambda:(upload_files(), select_file_btn.place_forget(), upload_file_btn.place_forget()))
+
+max_marks_frame = Frame(right_frame, bg=button_color, padx=90, pady=30)
+
+max_marks_label = Label(max_marks_frame, bg=button_color, fg="white", text="Enter the total marks", anchor="center", font=("roboto", 14))
+max_marks_label.grid(row=0, column=0, sticky="nsew")
+
+max_marks_entry = Entry(max_marks_frame, bg=button_color, fg="white", bd=0, highlightbackground="white", highlightthickness=1, font=("roboto", 12))
+max_marks_entry.grid(row=1, column=0, sticky="nsew", ipady=5)
+
+max_marks_btn = Button(max_marks_frame, bg="white", fg=button_color, padx=18, pady=3, text="Next",font=("roboto", 12, "bold"), cursor="hand2", command= lambda:(get_max_marks(), max_marks_frame.place_forget()))
+max_marks_btn.grid(row=2, column=0, sticky="nsew", pady=(20,0))
 
 ###############################  JOIN OPTIONS SECTION ###############################
 join_uploaded_work = Frame(join_right_frame, bg=button_color, padx=30, pady=15)
@@ -1043,7 +1108,6 @@ assignment_icon_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python pro
 assignment_icon_img= assignment_icon_img.subsample(8)
 
 create_assign_heading = Label(assignment_frame, text="Create Assignment".upper(),  font=("Roboto", 25, "bold"), bg="white", fg=button_color, anchor="w", compound="left", image=assignment_icon_img, padx=20)
-# create_assign_heading.config(padx=20)
 create_assign_heading.grid(row=0, column=0, sticky="nsew", pady=(0,80))
 
 assign_name = Label(assignment_frame, text="Title",  font=("Roboto", 14, "bold"), bg="white", fg=button_color, anchor="w")
@@ -1060,11 +1124,6 @@ t_marks = Label(assignment_frame, text="Total Marks",  font=("Roboto", 14, "bold
 t_marks_entry = Entry(assignment_frame, font=("Roboto", 14), bg="white", fg=label_color, bd=0, highlightthickness=1, highlightbackground=button_color, highlightcolor=button_color)
 t_marks.grid(row=4, column=0, sticky="w", pady=(40,0))
 t_marks_entry.grid(row=5, column=0,ipady=8, ipadx=50,sticky="w")
-
-# due_date = Label(assignment_frame, text="Due date",  font=("Roboto", 14, "bold"), bg="white", fg=button_color)
-# due_date_entry = DateEntry(assignment_frame, font=("Roboto", 14), bg="white", fg=button_color)
-# due_date.grid(row=4, column=1, sticky="w", pady=(40,0))
-# due_date_entry.grid(row=5, column=1, ipady=8, ipadx=85)
 
 submit_button = Button(assignment_frame, text="Next", font=("Roboto", 14, "bold"), bg=button_color, fg="white", bd=0, highlightthickness=0, cursor="hand2", command=lambda:(get_assignment_details(), "close_assignment_detail_frame(), create_assignment_cards(), clear_assignment_details()"))
 submit_button.grid(row=6, column=1, ipadx=50, ipady=5, pady=(50,0), sticky="e")
@@ -1085,8 +1144,6 @@ join_assign_heading = Label(join_right_frame, text="Assignments".upper(),  font=
 join_work_heading = Label(join_right_frame, text="My work".upper(),  font=("Roboto", 25, "bold"), bg="white", fg=button_color, anchor="w", padx=20)
 work_heading = Label(right_frame, text="Submitted assignments".upper(),  font=("Roboto", 25, "bold"), bg="white", fg=button_color, anchor="w", padx=20)
 
-# assign_heading.place(relx=0.035, rely=.08, anchor="w")
-
 def open_assign_detail_form():
     assignment_frame.place(relx=.5, rely=.5, anchor="center")
     create_assignment_btn.place_forget()
@@ -1101,9 +1158,7 @@ def open_assignment_cards():
 def open_join_assignment_cards():
     join_assignment_card_frame.place(relx=.5, rely=.6, anchor="center")
     join_assign_heading.place(relx=0.035, rely=.08, anchor="w")
-    # create_join_assignment_cards()
     join_show_assignment_btn.place_forget()
-
 
 def join_upload_sec(event, join_assignment_label):
     global clicked_assign_name, clicked_team_name
@@ -1145,13 +1200,6 @@ def join_upload_sec(event, join_assignment_label):
     except mysql.connector.Error as e:
         print(f"The error '{e}' occurred")
 
-# def submitted_assignment(event, join_assignment_label):
-#     clicked_assign_name = join_assignment_label.cget("text")
-#     join_assignment_label.config(text=clicked_assign_name)
-#     print(clicked_assign_name)
-
-
-
 def assign_label_clicked():
     global uploaded_work_frames, no_assignment_label
     welcome.place_forget()
@@ -1163,14 +1211,20 @@ def assign_label_clicked():
     assignment_frame.place_forget()
     assignment_card_frame.place_forget()
     assign_heading.place_forget()
-    for frame in uploaded_work_frames:
-        frame.destroy()  # or frame.pack_forget()
+    try:
+        for frame in uploaded_work_frames:
+            frame.destroy()  # or frame.pack_forget()
+    except:
+        print("error occured")
     work_heading.place_forget()
     special_back_btn.place_forget()
     back_btn.place(relx=.83, rely=.04)
-    no_assignment_label.place_forget()
-
-
+    try:
+        no_assignment_label.place_forget()
+    except:
+        print("error occured")
+    table.place_forget()
+    max_marks_frame.place_forget()
 
 def join_assign_label_clicked():
     global join_uploaded_work, uploaded_work_frames, no_join_assignment_label
@@ -1186,8 +1240,10 @@ def join_assign_label_clicked():
     join_uploaded_work.place_forget()
     join_uploaded_file.place_forget()
     join_welcome_label.place_forget()
-    no_join_assignment_label.place_forget()
-    
+    try:
+        no_join_assignment_label.place_forget()
+    except:
+        print("Error in join_assign_label_clicked")
 
 def plag_label_clicked():
     global uploaded_work_frames, no_assignment_label
@@ -1201,12 +1257,21 @@ def plag_label_clicked():
     assignment_frame.place_forget()
     assignment_card_frame.place_forget()
     assign_heading.place_forget()
-    for frame in uploaded_work_frames:
-        frame.destroy()  # or frame.pack_forget()
+    try:
+        for frame in uploaded_work_frames:
+            frame.destroy()  # or frame.pack_forget()
+    except:
+        print("I am in except")
     work_heading.place_forget()
     special_back_btn.place_forget()
     back_btn.place(relx=.83, rely=.04)
-    no_assignment_label.place_forget()
+    try:
+        no_assignment_label.place_forget()
+    except:
+        print("Except 2")
+    clear_table(table)
+    table.place_forget()
+    max_marks_frame.place(relx=.5, rely=.5, anchor="center")
 
 def get_assignment_details():
     global count_of_assignment, clicked_team_name  # declare the variable as global
@@ -1259,10 +1324,6 @@ def create_assignment_cards():
     assignments = "assignments"
         
     def submitted_assignment(event, join_assignment_label):
-    
-        special_back_btn.place(relx=.83, rely=.04)
-        special_back_btn.bind("<Button-1>", lambda event: close_uploaded_assign_section())
-        back_btn.place_forget()
         try:
             global clicked_uploaded_assign_name, uploaded_work
             clicked_uploaded_assign_name = join_assignment_label.cget("text")
@@ -1308,7 +1369,6 @@ def create_assignment_cards():
                 def download_uploaded_file(filepath):
                     print(filepath)
                     local_folder_path = r"C:\Users\ANSHARI\Downloads\Python project\Downloaded PDFs"
-                    # Create the local folder if it doesn't exist
                     if not os.path.exists(local_folder_path):
                         os.makedirs(local_folder_path)
                     ftp = ftplib.FTP(server_address)
@@ -1317,24 +1377,18 @@ def create_assignment_cards():
                         print("Path is", os.path.join(local_folder_path, filepath))
                         ftp.retrbinary(f"RETR {filepath}", f.write)
                         dialog_box("Downloaded successfully!", close_dialog_box, success, "white", "white", r"C:\Users\ANSHARI\Downloads\Python project\check.png")
-                    # Close the FTP connection  
                     ftp.quit()
+
                 def close_uploaded_assign_section():
                     global create_assignment_btn
                     for frame in uploaded_work_frames:
                         frame.destroy()  # or frame.pack_forget()
                     work_heading.place_forget()
-                    # create_assignment_btn = Button(right_frame, text="Create assignments", padx=25, pady=10, bg="white", fg=button_color, bd=0, highlightbackground=button_color, highlightthickness=0,font=("roboto", 23, "bold"),image=plus_icon, compound=LEFT, cursor="hand2", command=lambda:(open_assign_detail_form()))
-                    # create_assignment_btn.place(relx=.5, rely=.5, anchor="center")
-                    assign_label_clicked()
                     show_assignment_btn.place(relx=.6, rely=.04)
                     assign_heading.place_forget()
                     special_back_btn.place_forget()
                     back_btn.place(relx=.83, rely=.04)
 
-
-
-        
         except mysql.connector.Error as e:
             print(f"The error '{e}' occurred")
 
@@ -1351,18 +1405,14 @@ def create_assignment_cards():
                 assign_card = Frame(assignment_card_frame, bg=button_color, padx=30, pady=15)
                 assign_card.place(relx=.05, rely=.28*i, width=1099)
                     
-                assignment_label = Label(assign_card, text=f'{result[i][1]}',  font=("Roboto", 16, "bold", "underline"), bg=button_color, fg="white", anchor="w", cursor="hand2")
-                assignment_label.grid(row=1, column=0, sticky="w", pady=(0,10))
-
+                created_assignment_label = Label(assign_card, text=f'{result[i][1]}',  font=("Roboto", 16, "bold", "underline"), bg=button_color, fg="white", anchor="w", cursor="hand2")
+                created_assignment_label.grid(row=1, column=0, sticky="w", pady=(0,10))
+                created_assignment_label.bind("<Button-1>", lambda event, label=created_assignment_label: submitted_assignment(event, label))
                 assignment_subject_label = Label(assign_card, text=f"Subject: "+f'{result[i][2]}',  font=("Roboto", 12), bg=button_color, fg="white", anchor="w")
                 assignment_subject_label.grid(row=2, column=0, sticky="w")
 
                 assignment_marks_label = Label(assign_card, text=f'Marks: {result[i][3]}',  font=("Roboto", 12), bg=button_color, fg="white", anchor="w")
                 assignment_marks_label.grid(row=3, column=0, sticky="w")
-
-                # assignment_date_label = Label(assign_card, text=f'Due date: {result[i][4]}',  font=("Roboto", 12), bg=button_color, fg="white", anchor="w")
-                # assignment_date_label.grid(row=4, column=0, sticky="w")
-                # assignment_label.bind("<Button-1>", lambda event, label=assignment_label: submitted_assignment(event, label))
         else:
             assign_heading.place_forget()
             no_assignment_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\sad.png")
@@ -1433,16 +1483,10 @@ def create_join_assignment_cards():
 
                 assignment_marks_label = Label(join_assign_card, text=f'Marks: {result[i][2]}',  font=("Roboto", 12), bg=button_color, fg="white", anchor="w")
                 assignment_marks_label.grid(row=3, column=0, sticky="w")
-
-                assignment_date_label = Label(join_assign_card, text=f'Due date: {result[i][3]}',  font=("Roboto", 12), bg=button_color, fg="white", anchor="w")
-                assignment_date_label.grid(row=4, column=0, sticky="w")
                 
                 join_assignment_label.bind("<Button-1>", lambda event, label=join_assignment_label: join_upload_sec(event, label))
         else:
             join_assign_heading.place_forget()
-            no_join_assignment_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\sad.png")
-            no_join_assignment_img = no_join_assignment_img.subsample(7)
-            no_join_assignment_label = Label(join_right_frame, bg="white", text="No assginments found", font=("roboto", 25, "bold"), fg= button_color, image=no_join_assignment_img, compound=TOP, pady=20)
             no_join_assignment_label.place(relx=.5, rely=.5, anchor="center")
             no_join_assignment_label.image = no_join_assignment_img
 
@@ -1556,6 +1600,9 @@ join_cancel_btn.place(relx=.2, rely=.5, anchor="w")
 join_next_btn = Button(join_button_frame, text="Next", padx=25, pady=5, bg="white", fg=button_color, bd=0, highlightbackground=button_color, highlightthickness=0,font=("roboto", 12, "bold"), cursor="hand2", command=lambda:("run_for_n_seconds(create_team, 5)", join_team()))
 join_next_btn.place(relx=.65, rely=.5, anchor="w")
 
+no_join_assignment_img = tk.PhotoImage(file=r"C:\Users\ANSHARI\Downloads\Python project\sad.png")
+no_join_assignment_img = no_join_assignment_img.subsample(7)
+no_join_assignment_label = Label(join_right_frame, bg="white", text="No assginments found", font=("roboto", 25, "bold"), fg= button_color, image=no_join_assignment_img, compound=TOP, pady=20)
 
 ###############################  OPTIONS FOR JOINED TEAMS  ###############################
 

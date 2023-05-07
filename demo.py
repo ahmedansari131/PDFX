@@ -1,15 +1,25 @@
-import ftplib
+import tkinter as tk
 
-# Open a connection to the FileZilla server
-ftp = ftplib.FTP('127.0.0.1', 'pdfx', 'Mohammad#131#')
+def copy_text(event):
+    root.clipboard_clear()  # Clear the clipboard
+    root.clipboard_append(label_text.get())  # Append the text to the clipboard
+    status_label.config(text="Text copied!")  # Update the status label text
 
-# Change to the directory where you want to upload the file
-# ftp.cwd("PDF")
+root = tk.Tk()
 
-# Open the file you want to upload
-with open(r"C:\Users\ANSHARI\Downloads\Python project\31.pdf", 'rb') as file:
-    # Upload the file to the FTP server
-    ftp.storbinary('STOR 31.pdf', file)
+# Create a label widgetClick 
+label_text = tk.StringVar()
+label_text.set("Click to copy!")
+label = tk.Label(root, textvariable=label_text, fg="blue", cursor="hand2")
 
-# Close the FTP connection
-ftp.quit()
+# Bind the label to the copy_text function when it is clicked
+label.bind("<Button-1>", copy_text)
+
+# Create a status label to display the copy status
+status_label = tk.Label(root, text="")
+
+# Pack the labels in the window
+label.pack()
+status_label.pack()
+
+root.mainloop()
