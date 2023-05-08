@@ -5,13 +5,12 @@ import os
 import random
 from re import X
 import tkinter as tk
-from tkinter import TOP, VERTICAL, Y, Canvas, Image, Scrollbar, Text, Tk, filedialog, messagebox, Frame, Label, Entry, Button, LEFT, RIGHT, BOTH, END
+from tkinter import TOP, VERTICAL, Y, Canvas, Image, Text, Tk, filedialog, messagebox, Frame, Label, Entry, Button, LEFT, RIGHT, BOTH, END
 from tkinter import ttk
 from tkinter.font import Font
 from db_connect import *
 import pytesseract
 import PyPDF2
-from tkcalendar import DateEntry
 import ftplib
 
 
@@ -277,7 +276,7 @@ def open_join_options_panel(event, team_card_name_label):
     global clicked_team_name
     join_home2_frame.place(relx=0, rely=.5, anchor="w")
     join_show_assign_label.grid(row=0, column=0, sticky="nsew", pady=(0,40), ipadx=40, ipady=8, padx=40)
-    join_marks_label.grid(row=2, column=0, sticky="nsew", ipadx=30, ipady=8, padx=40)
+    # join_marks_label.grid(row=2, column=0, sticky="nsew", ipadx=30, ipady=8, padx=40)
     join_back_btn.place(relx=.83, rely=.04)
     assignment_label.grid_forget()
     plagiarism_label.grid_forget()
@@ -737,7 +736,7 @@ def calc_plag():
         table.place(relx=.475, rely=.5, anchor="center", height=500)
         max_marks = int(get_max_marks())
         print("I am max marks", type(max_marks))
-        for i in range(0, length_of_pdf-1):
+        for i in range(0, length_of_pdf):
             if 0.0 <= plagiarism[i] <= 21.0:
                 marks = int(max_marks)
             elif 21.0 <= plagiarism[i] <= 41.0:
@@ -752,6 +751,7 @@ def calc_plag():
             elif 81.0 <= plagiarism[i] <= 101.0:
                 marks = int(max_marks * 0.1)
             mark.append(marks)
+            print("Marks are:", mark)
         for i, key in enumerate(allPDF.keys()):
             print(key)
 
@@ -762,7 +762,7 @@ def calc_plag():
                 mydb.commit()
                 print("This is i", i)
             except:
-                table.insert(parent='', index='end', iid=i, text=f"{i+1}.", values=(f"{key} {plagiarism[i]} {mark[i-1]}/{max_marks}"))
+                table.insert(parent='', index='end', iid=i, text=f"{i+1}.", values=(f"{key} {plagiarism[i]} {mark[i]}/{max_marks}"))
                 mycursor.execute(f"INSERT INTO assignment_marks (teamname, username, pdf_name, plagiarism, marks, total_marks) VALUES (%s, %s, %s, %s, %s, %s)", (clicked_team_name, user_who, key, plagiarism[i], mark[i-1], max_marks))
                 print("This is except i", i)
                 print("Except")
@@ -800,7 +800,7 @@ def joined_upload_files():
         filename = os.path.basename(file_path)
         ftp.storbinary('STOR ' + filename, file)
         print("File uploaded:", filename)
-        file_path_on_server = ftp.pwd() + '/' + filename
+        file_path_on_server = file_path             
         try:
             # file_abs_path = os.path.abspath(file_path)
             # Execute an INSERT query to add the new user to the database  
